@@ -149,6 +149,7 @@ class MySQLManager {
   }
 
   Future<void> saveDatabaseConfiguration(String str) async {
+    //the configuration is correct if the map has the needed keys
     final config = getConfiguration(str);
     if (!_isConnectionConfigCorrect(config)) {
       throw BadMySQLCodeConfigException();

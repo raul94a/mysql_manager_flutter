@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart'
     show getApplicationSupportDirectory;
-import 'package:path/path.dart' as path;
+import 'package:path/path.dart' show separator;
 
 class EnvReader {
   EnvReader();
   Future<void> save(String str) async {
     final envFilePath =
-        '${(await getApplicationSupportDirectory()).path}${path.separator}.env';
+        '${(await getApplicationSupportDirectory()).path}$separator.env';
     File file = File(envFilePath);
     if (await file.exists()) {
       await file.writeAsString(str);
@@ -23,7 +23,7 @@ class EnvReader {
 
   Future<void> load() async {
     final envFilePath =
-        '${(await getApplicationSupportDirectory()).path}${path.separator}.env';
+        '${(await getApplicationSupportDirectory()).path}$separator.env';
     print(envFilePath);
     File file = File(envFilePath);
     //exists env file at root
@@ -62,7 +62,7 @@ class EnvReader {
         configuration += '$key=$value';
       }
     }
-    return configuration;
+    return base64Encode(configuration.trim().codeUnits);
   }
 
   final Map<String, String> _env = {};
