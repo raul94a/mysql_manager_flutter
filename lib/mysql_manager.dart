@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:mysql_client/mysql_client.dart';
 import 'package:mysql_manager_flutter/env_reader.dart';
 import 'package:mysql_manager_flutter/errors/env_reader_exceptions.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 
 class MySQLManager {
   //attributes
@@ -50,7 +54,7 @@ class MySQLManager {
     _timeout = timeoutMs;
     if (useEnvFile) {
       try {
-        await _initWithEnv(config: config);
+        await _initWithEnv();
       } on BadMySQLConfigException catch (err) {
         print(err.toString());
         throw BadMySQLConfigException();
@@ -77,20 +81,11 @@ class MySQLManager {
   }
 
   //initialize with env file
-  Future<void> _initWithEnv({Map<String, String> config = const {}}) async {
+  Future<void> _initWithEnv() async {
     //read .env file
     Map<String, dynamic> env = {};
     if (_connectionConfig.isEmpty) {
       final envReader = EnvReader();
-      if (config.isNotEmpty) {
-        final file = await envReader.load();
-        final base64FileContent = file.readAsStringSync();
-        final base64Configuration = envReader.encode(config);
-        if(base64FileContent != base64Configuration){
-          file.writeAsStringSync(base64Configuration);
-        }
-
-      }
       await envReader.load();
       env = envReader.env;
       if (!_isConnectionConfigCorrect(env)) {
@@ -149,6 +144,22 @@ class MySQLManager {
   Future<void> saveDatabaseConfiguration(String str) async {
     //the configuration is correct if the map has the needed keys
     final config = _getConfiguration(str);
+    if (!_isConnectionConfigCorrect(config)) {
+      throw BadMySQLCodeConfigException();
+    }
+    final envReader = EnvReader();
+    final configuration = envReader.encode(config);
+    await envReader.save(configuration);
+  }
+
+  Future<void> saveDatabaseConfigurationOnce(Map<String, String> config) async {
+    final mPath =
+        '${(await getApplicationSupportDirectory()).path}$separator.env';
+    File file = File(mPath);
+    if (file.existsSync()) {
+      return;
+    }
+
     if (!_isConnectionConfigCorrect(config)) {
       throw BadMySQLCodeConfigException();
     }
