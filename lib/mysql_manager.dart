@@ -141,9 +141,9 @@ class MySQLManager {
     return mapper;
   }
 
-  Future<void> saveDatabaseConfiguration(String str) async {
+  Future<void> saveDatabaseConfiguration(Map<String,String> config) async {
     //the configuration is correct if the map has the needed keys
-    final config = _getConfiguration(str);
+    config.addAll({'db': 'mysql'});
     if (!_isConnectionConfigCorrect(config)) {
       throw BadMySQLCodeConfigException();
     }
