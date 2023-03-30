@@ -10,10 +10,21 @@ class EnvReader {
     final envFilePath =
         '${(await getApplicationSupportDirectory()).path}$separator.env';
     File file = File(envFilePath);
+    File developmentEnvFile = File('.env');
     if (await file.exists()) {
       await file.writeAsString(str);
+
       return;
     }
+
+    //create development envFile
+    await developmentEnvFile.create().then((value) => file
+        .writeAsString(
+            'THIS FILE IS NOT RESPONSIBLE OF THE CONNECTION OF YOUR DB - THE REAL FILE IS THE SUPPORT DIRECTORY OF THIS APP\n')
+        .then((_) => file.writeAsStringSync(
+            String.fromCharCodes(base64Decode(str)),
+            mode: FileMode.append)));
+
     //file is created in case it does not exist.
 
     await file.create().then((file) {
@@ -21,11 +32,12 @@ class EnvReader {
     });
   }
 
-  Future<void> load() async {
+  Future<File> load() async {
     final envFilePath =
         '${(await getApplicationSupportDirectory()).path}$separator.env';
     print(envFilePath);
     File file = File(envFilePath);
+    File developmentEnvFile = File('.env');
     //exists env file at root
     if (await file.exists()) {
       var res = _decode(file);
@@ -35,13 +47,15 @@ class EnvReader {
         mapper.addAll({splitter[0]: splitter[1]});
       }
       _env.addAll(mapper);
-      return;
+      return file;
     }
+    await developmentEnvFile
+        .create()
+        .then((value) => file.writeAsStringSync(_magicString));
     //file is created in case it does not exist.
 
-    await file.create().then((file) {
-      file.writeAsStringSync(_magicString);
-    });
+    await file.create().then((file) => file.writeAsStringSync(_magicString));
+    return file;
   }
 
   List<String> _decode(File file) {

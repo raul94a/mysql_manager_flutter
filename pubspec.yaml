@@ -1,6 +1,6 @@
 name: mysql_manager_flutter
 description: Easy connection to MySQL for desktop applications
-version: 0.1.1
+version: 0.1.2
 homepage: https://github.com/raul94a/mysql_manager_flutter
 
 environment:
