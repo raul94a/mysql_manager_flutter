@@ -7,6 +7,8 @@ class MySQLManager {
   static MySQLManager? _manager;
   MySQLConnection? _conn;
 
+  int? _timeout;
+
   static Map<String, dynamic> _connectionConfig = const {};
 
   //private constructor
@@ -25,21 +27,6 @@ class MySQLManager {
   ///
   MySQLConnection? get conn => _conn;
 
-  //load connection data
-  Future<void> loadConfiguration(
-      [bool useEnvFile = true,
-      Map<String, dynamic> connectionConfig = const {}]) async {
-    try {
-      await init(useEnvFile, connectionConfig);
-    } catch (err) {
-      throw Exception(err.toString());
-    } finally {
-      if (conn != null) {
-        await _conn!.close();
-      }
-    }
-  }
-
   ///Initialize connection to mysql using both .env file or configuration map.
   ///
   ///if [useEnvFile] is setted to true a [config] Map<String,dynamic> is needed.
@@ -57,10 +44,13 @@ class MySQLManager {
   ///On the other hand, when not using .env file and setting the configuration directly at [config] argument and the map
   ///has not the correct structure, a ```BadMySQLCodeConfig``` will be raised.
   Future<MySQLConnection> init(
-      [useEnvFile = true, Map<String, dynamic> config = const {}]) async {
+      {bool useEnvFile = true,
+      Map<String, String> config = const {},
+      int? timeoutMs}) async {
+    _timeout = timeoutMs;
     if (useEnvFile) {
       try {
-        await _initWithEnv();
+        await _initWithEnv(config: config);
       } on BadMySQLConfigException catch (err) {
         print(err.toString());
         throw BadMySQLConfigException();
@@ -87,11 +77,20 @@ class MySQLManager {
   }
 
   //initialize with env file
-  Future<void> _initWithEnv() async {
+  Future<void> _initWithEnv({Map<String, String> config = const {}}) async {
     //read .env file
     Map<String, dynamic> env = {};
     if (_connectionConfig.isEmpty) {
-      var envReader = EnvReader();
+      final envReader = EnvReader();
+      if (config.isNotEmpty) {
+        final file = await envReader.load();
+        final base64FileContent = file.readAsStringSync();
+        final base64Configuration = envReader.encode(config);
+        if(base64FileContent != base64Configuration){
+          file.writeAsStringSync(base64Configuration);
+        }
+
+      }
       await envReader.load();
       env = envReader.env;
       if (!_isConnectionConfigCorrect(env)) {
@@ -105,7 +104,7 @@ class MySQLManager {
         userName: _connectionConfig['user'],
         password: _connectionConfig['password'],
         databaseName: _connectionConfig['db']);
-    await connection.connect();
+    await connection.connect(timeoutMs: _timeout ?? 4000);
     _conn = connection;
   }
 
@@ -124,8 +123,7 @@ class MySQLManager {
         password: _connectionConfig['password'],
         databaseName: _connectionConfig['db']);
 
-    await connection.connect();
-
+    await connection.connect(timeoutMs: _timeout ?? 4000);
     _conn = connection;
   }
 
@@ -137,7 +135,7 @@ class MySQLManager {
     return true;
   }
 
-  Map<String, String> getConfiguration(String str) {
+  Map<String, String> _getConfiguration(String str) {
     str = str.trim();
     final lines = str.split('\n');
     Map<String, String> mapper = {};
@@ -150,7 +148,7 @@ class MySQLManager {
 
   Future<void> saveDatabaseConfiguration(String str) async {
     //the configuration is correct if the map has the needed keys
-    final config = getConfiguration(str);
+    final config = _getConfiguration(str);
     if (!_isConnectionConfigCorrect(config)) {
       throw BadMySQLCodeConfigException();
     }
